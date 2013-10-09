@@ -39,11 +39,6 @@ class IWorkspaceFinder(Interface):
     teams, given some location being adapted.
     """
 
-    def team():
-        """
-        Return containing team workspace for context or None
-        """
-
     def project():
         """
         Return containing project workspace for context or None
