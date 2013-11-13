@@ -23,13 +23,12 @@
 <div metal:fill-slot="main"
      tal:define="is_project python: context.portal_interface.objectImplements(context, 'uu.qiext.interfaces.IProjectContext');
                  type_title view/type_title;
-                 workspace_title python:'project' if is_project else 'workspace';
                  lock_icon string:${context/@@plone_portal_state/navigation_root_url}/lock_icon.png;
                  mail_icon string:${context/@@plone_portal_state/navigation_root_url}/mail_icon.png;
                  delete_icon string:${context/@@plone_portal_state/navigation_root_url}/delete_icon.png;
                  info_icon string:${context/@@plone_portal_state/navigation_root_url}/info_icon.png;">
- <h1>Manage workgroup memberships</h1>
- <h2 style="color:#687;font-size:130%;margin-left:2em;"><em tal:content="context/Title">TITLE</em><strong tal:condition="python:workspace_title=='project'"> (Project)</strong></h2>
+ <h1>Manage workgroup membership of this <span tal:content="type_title">workspace</span>.</h1>
+ <h2 style="color:#687;font-size:130%;margin-left:2em;"><em tal:content="context/Title">TITLE</em><strong tal:condition="python:type_title=='project'"> (Project)</strong></h2>
 
 
  <div class="membership-action-buttons">
@@ -40,7 +39,7 @@
    <a class="add-user-entry" href="@@workspace_membership">&nbsp; Search for existing site users to add</a>
 
  </div>
- <p class="help">
+ <p class="help" style="clear:both">
    You may view the <span class="type_title" tal:content="type_title">workspace</span>
    roster as seen by non-manager members see by clicking <a href="./@@roster" class="view-roster">here</a>.
  </p>
@@ -52,7 +51,7 @@
    <p>
     There are <span tal:replace="python:len(view.roster)">#</span> workgroup members
     for this <span class="type_title" tal:content="type_title">workspace</span>,
-    being assigned at minimum the "Workspace Viewers" group assignment.
+    being assigned at minimum the "<span tal:content="python:type_title.title()">Workspace</span> Viewers" group assignment.
    </p>
 
    <p class="help">To remove a user or send password email, click the lock icon (
@@ -66,11 +65,13 @@
     <table class="listing" tal:define="groups view/groups; cols python:len(groups);">
      <tr class="odd">
        <th rowspan="2">User name, email</th>
-       <th colspan="4" style="color:black;" tal:attributes="colspan cols"><span tal:replace="python:workspace_title.title()">Workspace</span> group assignments</th>
+       <th colspan="4" style="color:black;" tal:attributes="colspan cols"><span tal:replace="python:type_title.title()">Workspace</span> group assignments</th>
      </tr>
      <tr class="odd">
        <th tal:repeat="group groups">
-        <span tal:replace="group/title"></span>
+        <tal:block define="heading group/title">
+          <span tal:replace="python:heading.replace('Workspace', type_title.title())"></span>
+        </tal:block>
        </th>
      </tr>
      <tr tal:repeat="user view/roster/values">

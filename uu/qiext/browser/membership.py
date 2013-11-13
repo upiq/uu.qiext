@@ -35,9 +35,9 @@ class WorkspaceViewBase(object):
 
     def type_title(self):
         """Returns workspace type title for use in templates"""
-        typename = 'qiproject' if self.isproject else 'qiteam'
-        types_tool = getToolByName(self.portal, 'portal_types')
-        return types_tool.getTypeInfo(typename).Title().lower()
+        if self.isproject:
+            return 'project'
+        return 'team'
 
     def _log(self, msg, level=logging.INFO):
         """
