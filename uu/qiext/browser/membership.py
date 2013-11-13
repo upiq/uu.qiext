@@ -31,6 +31,13 @@ class WorkspaceViewBase(object):
         self.title = self.context.Title().decode('utf-8')
         self.path = '/'.join(self.context.getPhysicalPath())
         self.status = IStatusMessage(self.request)
+        self.isproject = IProjectContext.providedBy(context)
+
+    def type_title(self):
+        """Returns workspace type title for use in templates"""
+        typename = 'qiproject' if self.isproject else 'qiteam'
+        types_tool = getToolByName(self.portal, 'portal_types')
+        return types_tool.getTypeInfo(typename).Title().lower()
 
     def _log(self, msg, level=logging.INFO):
         """
@@ -74,9 +81,9 @@ class WorkspaceMembership(WorkspaceViewBase):
 
     # TODO: memoize this
     def groups(self, email=None):
-        _o = ('viewers', 'contributors', 'managers', 'forms')  # order
+        _o = ('viewers', 'forms', 'contributors', 'managers',)  # order
         _k = lambda d: _o.index(d['groupid']) if d['groupid'] in _o else None
-        if IProjectContext.providedBy(self.context):
+        if self.isproject:
             _groups = sorted(copy.deepcopy(PROJECT_GROUPS).values(), key=_k)
         else:
             _groups = sorted(copy.deepcopy(WORKSPACE_GROUPS).values(), key=_k)
