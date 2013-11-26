@@ -12,6 +12,8 @@ class WorkspaceMembershipCSV(object):
     Adapter or view of workspace providing CSV output of membership.
     """
 
+    DISP = 'attachment; filename=%s'
+
     ORDER = ('EMAIL', 'FULLNAME')
 
     def __init__(self, context, request=None):
@@ -33,7 +35,7 @@ class WorkspaceMembershipCSV(object):
         self.info = map(self._info, self.members)
         self.output = StringIO()
         self.output.write(u'\ufeff'.encode('utf8'))  # UTF-8 BOM for MSExcel
-        self.writer = csv.dictWriter(self.output, self.ORDER)
+        self.writer = csv.DictWriter(self.output, self.ORDER)
         # write heading row:
         self.writer.writerow(dict([(n, n) for n in self.ORDER]))
         for record in self.info:
@@ -43,15 +45,15 @@ class WorkspaceMembershipCSV(object):
     def index(self, *args, **kwargs):
         filename = '%s.csv' % self.context.getId()
         self.output.seek(0)
-        csv = self.output.read()
+        output = self.output.read()
         if self.request:
             self.request.response.setHeader('Content-Type', 'text/csv')
-            self.request.response.setHeader('Content-Length', str(len(csv)))
+            self.request.response.setHeader('Content-Length', str(len(output)))
             self.request.response.setHeader(
                 'Content-Disposition',
                 self.DISP % filename,
                 )
-        return csv
+        return output
 
     def __call__(self, *args, **kwargs):
         self.update(*args, **kwargs)
