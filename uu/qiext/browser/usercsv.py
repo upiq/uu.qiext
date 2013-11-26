@@ -1,5 +1,5 @@
 import csv
-from StringIO import cStringIO as StringIO
+from cStringIO import StringIO
 
 from zope.globalrequest import getRequest
 
