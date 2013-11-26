@@ -21,6 +21,14 @@
     layer="uu.qiext.interfaces.IQIExtranetProductLayer"
     permission="zope2.ManageUsers"
     />
+
+  <browser:page
+    name="members_csv"
+    class=".usercsv.WorkspaceMembershipCSV"
+    for="uu.qiext.interfaces.IWorkspaceContext"
+    layer="uu.qiext.interfaces.IQIExtranetProductLayer"
+    permission="zope2.ManageUsers"
+    />
   
   <browser:page
     name="user_purge"
