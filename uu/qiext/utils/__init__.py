@@ -45,7 +45,7 @@ def _all_the_things(context, portal_type):
     query = {'portal_type': portal_type}
     if context is not site:
         query.update({'path': '/'.join(context.getPhysicalPath())})
-    r = site.portal_catalog.search(query)
+    r = site.portal_catalog.unrestrictedSearchResults(query)
     _all_but_context = lambda o: aq_base(o) is not aq_base(context)
     return filter(_all_but_context, [b._unrestrictedGetObject() for b in r])
 
@@ -65,7 +65,9 @@ def all_teams(context):
 
 def group_workspace(groupname):
     portal = getSite()
-    r = portal.portal_catalog.search({'pas_groups': groupname})
+    r = portal.portal_catalog.unrestrictedSearchResults(
+        {'pas_groups': groupname}
+        )
     if not r:
         return None
     return r[0]._unrestrictedGetObject()
@@ -89,7 +91,7 @@ def find_parents(context, typename=None, findone=False, start_depth=2):
             }
         if typename is None:
             del(query['portal_type'])
-        brains = catalog.search(query)
+        brains = catalog.unrestrictedSearchResults(query)
         if not brains:
             continue
         else:
@@ -150,7 +152,8 @@ def getProjectsInContext(context):
             },
         'portal_type': 'qiproject',
         }
-    return [b._unrestrictedGetObject() for b in catalog.search(query)]
+    find = catalog.unrestrictedSearchResults
+    return [b._unrestrictedGetObject() for b in find(query)]
 
 
 def getTeamsInContext(context):
@@ -163,7 +166,8 @@ def getTeamsInContext(context):
             },
         'portal_type': 'qiteam',
         }
-    return [b._unrestrictedGetObject() for b in catalog.search(query)]
+    find = catalog.unrestrictedSearchResults
+    return [b._unrestrictedGetObject() for b in find(query)]
 
 
 class WorkspaceUtilityView(object):
