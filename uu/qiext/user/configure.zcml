@@ -2,6 +2,14 @@
   xmlns="http://namespaces.zope.org/zope"
   i18n_domain="uu.qiext">
 
+
+  <!-- utility registrations for configuration -->
+
+  <utility
+    provides=".interfaces.IWorkgroupTypes"
+    factory=".config.WorkspaceGroupTypes"
+    />
+
   <!-- adapter registrations for user/group management -->
   <adapter
     for="Products.CMFCore.interfaces.ISiteRoot"

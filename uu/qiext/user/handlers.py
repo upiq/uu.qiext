@@ -1,16 +1,19 @@
-# event handlers for lifecycle events on projects and teams
+# event handlers for lifecycle events on projects and workspaces
 
 from plone.app.layout.navigation.interfaces import INavigationRoot
 from zope.component.hooks import getSite
 from zope.lifecycleevent.interfaces import IObjectAddedEvent
 from zope.lifecycleevent.interfaces import IObjectRemovedEvent
 from Acquisition import aq_base
-from Products.CMFCore.utils import getToolByName
 
 from uu.qiext.user.interfaces import ISiteMembers
 from uu.qiext.user.workgroups import WorkspaceRoster
-from uu.qiext.user.utils import sync_group_roles, LocalRolesView, grouproles
-from uu.qiext.utils import request_for, contained_workspaces
+from uu.qiext.user.utils import sync_group_roles
+from uu.qiext.utils import get_workspaces
+
+
+_str = lambda v: v.encode('utf-8') if isinstance(v, unicode) else str(v)
+_u = lambda v: v.decode('utf-8') if isinstance(v, str) else unicode(v)
 
 
 def handle_workspace_copy(context, event):
@@ -26,28 +29,34 @@ def handle_workspace_copy(context, event):
 
 def create_workspace_groups_roles(context):
     site = getSite()
-    plugin = getToolByName(site, 'acl_users').source_groups
+    members = ISiteMembers(site)
+    pasgroups = members.groups
     roster = WorkspaceRoster(context)
     for group in roster.groups.values():
-        groupname = group.pas_group()
-        if groupname not in plugin.getGroupIds():
-            plugin.addGroup(groupname)
+        groupname, title = group.pas_group()
+        if groupname not in pasgroups:
+            print 'added ', groupname
+            pasgroups.add(groupname, title=title)
+        else:
+            # update title of previously existing group (edge case)
+            pasgroups.get(groupname).title = _u(title)
         # bind local roles, mapping group to roles from config
         sync_group_roles(context, groupname)
     if INavigationRoot.providedBy(context):
         # for newly added top-level (nav root workspaces or
         # projects), add owner/creator as a manager.
-        mtool = getToolByName(site, 'portal_membership')
-        authuser = mtool.getAuthenticatedMember().getUserName()
-        if authuser in ISiteMembers(site):
-            roster.add(authuser)
-            roster.groups['managers'].add(authuser)
+        authuser = members.current()
+        if authuser is not None:
+            authuser = authuser.getUserName()
+            if authuser in members:
+                roster.add(authuser)
+                roster.groups['managers'].add(authuser)
 
 
 def handle_workspace_pasted(context, event, original_path):
     """handle IObjectAddedEvent after a copy/paste opertion"""
     create_workspace_groups_roles(context)
-    for workspace in contained_workspaces(context):
+    for workspace in get_workspaces(context):
         create_workspace_groups_roles(workspace)
 
 
@@ -70,44 +79,19 @@ def handle_workspace_added(context, event):
 
 
 def handle_workspace_move_or_rename(context, event):
-    """
-    Handler for IObjectMovedEvent on a workspace, ignores
-    IObjectRemovedEvent.
-    """
     if IObjectRemovedEvent.providedBy(event):
         return  # not a move with new/old, but a removal -- handled elsewhere
     if IObjectAddedEvent.providedBy(event):
         return  # not an add, but a move of existing
-    old_id = event.oldName
-    new_id = event.newName
     site = getSite()
-    plugin = site.acl_users.source_groups
-    _users = lambda g: [u[0] for u in plugin.listAssignedPrincipals(g)]
+    pasgroups = ISiteMembers(site).groups
     roster = WorkspaceRoster(context)
-    manager = LocalRolesView(context, request_for(context))
-    for group in roster.groups.values():
-        users = []
-        groupname = group.pas_group()
-        old_groupname = groupname.replace(new_id, old_id, 1)
-        # unhook (empty) roles for old group name:
-        manager.update_role_settings([grouproles(old_groupname, [])])
-        if old_groupname in plugin.getGroupIds():
-            users = _users(old_groupname)
-            plugin.removeGroup(old_groupname)
-        if groupname not in plugin.getGroupIds():
-            plugin.addGroup(groupname)
-        for principal in users:
-            plugin.addPrincipalToGroup(principal, groupname)
-        # hook-up new local roles for the new groupname:
-        sync_group_roles(context, groupname)
-    # changes to the workspace short name affect the groupnames of
-    # all nested spaces, so we should handle the renaming and associated
-    # local roles re-mapping for each nested workspace.  Passsing the
-    # original event will yield the portion of the groupname (old/new id)
-    # needing change.
-    if context.getId() == event.newName:
-        for workspace in contained_workspaces(context):
-            handle_workspace_move_or_rename(workspace, event=event)
+    for workgroup in roster.groups.values():
+        groupname, title = workgroup.pas_group()
+        if groupname not in pasgroups:
+            pasgroups.add(groupname, title=title)
+        else:
+            pasgroups.get(groupname).title = _u(title)
 
 
 def handle_workspace_removal(context, event):
@@ -115,14 +99,14 @@ def handle_workspace_removal(context, event):
     site = getSite()
     if site is None:
         return  # in case of recursive plone site removal, ignore
-    plugin = site.acl_users.source_groups
+    pasgroups = ISiteMembers(site).groups
     roster = WorkspaceRoster(context)
     for group in roster.groups.values():
-        groupname = group.pas_group()
-        if groupname in plugin.getGroupIds():
-            plugin.removeGroup(groupname)
+        groupname = group.pas_group()[0]
+        if groupname in pasgroups:
+            pasgroups.remove(groupname)
     # remove group names for nested workspaces (also, by implication,
     #   removed from the PAS group manager plugin).
-    for workspace in contained_workspaces(context):
+    for workspace in get_workspaces(context):
         handle_workspace_removal(workspace, event=event)
 

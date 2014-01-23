@@ -1,10 +1,18 @@
-from plone.app.workflow.browser.sharing import SharingView
+from AccessControl.SecurityManagement import getSecurityManager
 from Acquisition import aq_base
+from plone.app.workflow.browser.sharing import SharingView
+from plone.uuid.interfaces import IUUID
+from zope.component import queryUtility
 
 from uu.qiext.interfaces import IProjectContext
-from uu.qiext.utils import request_for, containing_workspaces
-from uu.qiext.user.interfaces import PROJECT_GROUPS, WORKSPACE_GROUPS
-from uu.qiext.user.interfaces import APP_ROLES
+from uu.qiext.utils import request_for
+from config import APP_ROLES
+from uu.qiext.user.interfaces import IWorkgroupTypes
+
+
+def authenticated_user(site):
+    user = aq_base(getSecurityManager().getUser())
+    return user.__of__(site.acl_users) if user is not None else None
 
 
 class LocalRolesView(SharingView):
@@ -29,14 +37,7 @@ class LocalRolesView(SharingView):
 
 
 def group_namespace(context):
-    """Get group namespace/prefix for a project or workspace context"""
-    if not IProjectContext.providedBy(context):
-        containing = containing_workspaces(context)
-        ids = [workspace.getId() for workspace in containing
-               if workspace is not context]
-        ids.append(context.getId())
-        return '-'.join(ids)
-    return context.getId()
+    return IUUID(context)
 
 
 def always_inherit_local_roles(context):
@@ -54,12 +55,14 @@ def _roles_for(name, groupcfg):
 
 def _project_roles_for(name):
     """Given full or partial groupname, return roles from map"""
-    return _roles_for(name, PROJECT_GROUPS)
+    fn = lambda info: (str(info.get('groupid')), info)
+    config = dict(map(fn, queryUtility(IWorkgroupTypes).select('project')))
+    return _roles_for(name, config)
 
 
 def _workspace_roles_for(name):
     """Given full or partial groupname, return roles from map"""
-    return _roles_for(name, WORKSPACE_GROUPS)
+    return _roles_for(name, queryUtility(IWorkgroupTypes))
 
 
 def grouproles(groupname, roles):

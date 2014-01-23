@@ -14,7 +14,6 @@
   <five:registerPackage package="." initialize=".zope2.initialize" />
 
   <include package=".browser" />
-  <include package=".membership" />
   <include package=".user" />
   <include package=".viewlets" />
 
@@ -35,13 +34,13 @@
   </class>
 
   <adapter
-    factory=".utils.project_containing"
+    factory=".utils.project_for"
     for="Products.CMFCore.interfaces.IContentish"
     provides=".interfaces.IProjectContext"
     />
 
   <adapter
-    factory=".utils.workspace_containing"
+    factory=".utils.workspace_for"
     for="Products.CMFCore.interfaces.IContentish"
     provides=".interfaces.IWorkspaceContext"
     />

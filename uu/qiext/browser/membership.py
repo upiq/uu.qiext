@@ -1,15 +1,19 @@
 import copy
 import logging
 
-from zope.component.hooks import getSite
 from Products.CMFCore.utils import getToolByName
 from Products.statusmessages.interfaces import IStatusMessage
+from zope.component.hooks import getSite
+from zope.component import queryUtility
 
+from Products.qi.extranet.types.interfaces import PROJECT_TYPE
+from Products.qi.extranet.types.interfaces import TEAM_TYPE as WORKSPACE_TYPE
 from uu.qiext.interfaces import APP_LOG, IProjectContext
-from uu.qiext.user.interfaces import WORKSPACE_GROUPS, PROJECT_GROUPS
 from uu.qiext.user.members import SiteMembers
 from uu.qiext.user.workgroups import WorkspaceRoster
-from uu.qiext.utils import containing_workspaces, contained_workspaces
+from uu.qiext.user.interfaces import IWorkgroupTypes
+from uu.qiext.utils import parent_workspaces
+from uu.qiext.utils import get_workspaces
 
 
 _true = lambda a, b: bool(a) and a == b  # for reduce()
@@ -35,9 +39,9 @@ class WorkspaceViewBase(object):
 
     def type_title(self):
         """Returns workspace type title for use in templates"""
-        if self.isproject:
-            return 'project'
-        return 'team'
+        typename = PROJECT_TYPE if self.isproject else WORKSPACE_TYPE
+        types_tool = getToolByName(self.portal, 'portal_types')
+        return types_tool.getTypeInfo(typename).Title().lower()
 
     def _log(self, msg, level=logging.INFO):
         """
@@ -78,24 +82,26 @@ class WorkspaceMembership(WorkspaceViewBase):
         super(WorkspaceMembership, self).__init__(context, request)
         self.search_user_result = []
         self.form = self.request.form
+        self.config = None
 
-    # TODO: memoize this
     def groups(self, email=None):
-        _o = ('viewers', 'forms', 'contributors', 'managers',)  # order
-        _k = lambda d: _o.index(d['groupid']) if d['groupid'] in _o else None
-        if self.isproject:
-            _groups = sorted(copy.deepcopy(PROJECT_GROUPS).values(), key=_k)
-        else:
-            _groups = sorted(copy.deepcopy(WORKSPACE_GROUPS).values(), key=_k)
+        if self.config is None:
+            group_types = queryUtility(IWorkgroupTypes)
+            if self.isproject:
+                self.config = group_types.select('project')
+            else:
+                self.config = group_types.values()
         if email is not None:
-            for groupinfo in _groups:
+            config = copy.deepcopy(self.config)
+            for groupinfo in config:
                 groupid = groupinfo['groupid']
                 if groupid == 'viewers':
                     groupinfo['checked'] = True  # given for any user in grid
                 else:
                     workspace_group = self.roster.groups[groupid]
                     groupinfo['checked'] = email in workspace_group
-        return _groups
+            return config
+        return self.config
 
     def can_purge(self, email):
         """
@@ -111,14 +117,14 @@ class WorkspaceMembership(WorkspaceViewBase):
             raise ValueError('cannot purge this user %s' % email)
         self.roster.remove(email, purge=True)
 
-    def _add_user_to_containing_workspaces(self, email, log_prefix=u''):
+    def _add_user_to_parent_workspaces(self, email, log_prefix=u''):
         """
         If there are workspaces containing this workspace,
         add the user to the containing workspace roster (as a viewer),
         so, if you (for example) add a user to a team, they also get
         added to the project containing that team:
         """
-        for container in containing_workspaces(self.context):
+        for container in parent_workspaces(self.context):
             roster = WorkspaceRoster(container)
             if email not in roster:
                 roster.add(email)
@@ -182,7 +188,7 @@ class WorkspaceMembership(WorkspaceViewBase):
                 )
             self.status.addStatusMessage(msg, type='info')
             self._log(msg, level=logging.INFO)
-            self._add_user_to_containing_workspaces(
+            self._add_user_to_parent_workspaces(
                 email,
                 log_prefix=u'_update_select_existing',
                 )
@@ -265,7 +271,7 @@ class WorkspaceMembership(WorkspaceViewBase):
                         # of all assignments from contained workspaces.
                         self.status.addStatusMessage(msg, type='info')
                         self._log(msg, level=logging.INFO)
-                        for workspace in contained_workspaces(self.context):
+                        for workspace in get_workspaces(self.context):
                             roster = WorkspaceRoster(workspace)
                             if email in roster.groups['viewers']:
                                 for group in roster.groups.values():
@@ -335,7 +341,7 @@ class WorkspaceMembership(WorkspaceViewBase):
         self.status.addStatusMessage(msg, type='info')
         msg = u'_update_register(): %s' % msg
         self._log(msg, level=logging.INFO)
-        self._add_user_to_containing_workspaces(
+        self._add_user_to_parent_workspaces(
             email,
             log_prefix=u'_update_register:',
             )
