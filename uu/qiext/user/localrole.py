@@ -53,7 +53,7 @@ class WorkspaceLocalRoleManager(BasePlugin):
     borg.localrole.workspace.WorkspaceLocalRoleManager.
     """
 
-    meta_type = 'Enhanced workspaces roles manager'
+    meta_type = 'Enhanced workspace roles manager'
 
     security = ClassSecurityInfo()
 
