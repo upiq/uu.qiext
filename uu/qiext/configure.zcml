@@ -45,6 +45,13 @@
     provides=".interfaces.IWorkspaceContext"
     />
 
+  <!-- subscribers -->
+  <subscriber
+    for=".interfaces.IProjectContext
+         zope.lifecycleevent.interfaces.IObjectAddedEvent"
+    handler=".handlers.project_afteradd"
+    /> 
+
   <!-- utility view(s) -->
   <browser:page
     for="*"
