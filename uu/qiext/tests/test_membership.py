@@ -40,7 +40,24 @@ class MembershipTest(unittest.TestCase):
         self.assertIn(_ID, adapter)
         self.assertIn(_ID, adapter.keys())
         self.assertIn(_ID, list(iter(adapter)))
+        # following is only true by convention and the fact that
+        #  the email is lower-case only:
         self.assertEqual(adapter.get(_ID).getProperty('email'), _EMAIL)
+
+    def test_registration_mixedcase(self, email=None):
+        email = email or 'MixedCase@example.com'
+        expected_username = email.lower()
+        adapter = SiteMembers(self.portal)
+        self.assertEqual(
+            adapter._uf.applyTransform(email),
+            expected_username,
+            )
+        adapter.register(email, send=False, email=email)
+        self.assertNotIn(email, adapter)
+        self.assertIn(expected_username, adapter)
+        self.assertIn(expected_username, adapter.keys())
+        user = adapter.get(expected_username)
+        self.assertEqual(user.getProperty('email'), email)
 
     def test_addremove_user(self):
         _ID = 'user2@example.com'
