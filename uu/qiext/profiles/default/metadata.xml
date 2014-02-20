@@ -2,6 +2,8 @@
   <version>1</version>
   <dependencies>
     <dependency>profile-uu.workflows:default</dependency>
+    <dependency>profile-uu.eventintegration:default</dependency>
+    <dependency>profile-uu.formlibrary:default</dependency>
     <dependency>profile-Products.qi:default_plone4</dependency>
   </dependencies>
 </metadata>

@@ -1,4 +1,5 @@
 # test layers for uu.qiext -- requires plone.app.testing
+from plone.testing import z2
 
 from plone.app.testing import PloneSandboxLayer
 from plone.app.testing import PLONE_FIXTURE
@@ -14,6 +15,7 @@ class ProductLayer(PloneSandboxLayer):
 
     def setUpZope(self, app, configurationContext):
         """load package zcml to initialize product"""
+        z2.installProduct(app, 'Products.DateRecurringIndex')
         import z3c.form
         self.loadZCML(name='meta.zcml', package=z3c.form)
         self.loadZCML(package=z3c.form)  # needed for testing product views
@@ -25,6 +27,10 @@ class ProductLayer(PloneSandboxLayer):
         self.loadZCML(package=Products.qi)
         import uu.workflows
         self.loadZCML(package=uu.workflows)
+        import uu.eventintegration
+        self.loadZCML(package=uu.eventintegration)
+        import uu.formlibrary
+        self.loadZCML(package=uu.formlibrary)
         import uu.qiext
         self.loadZCML(package=uu.qiext)
 
