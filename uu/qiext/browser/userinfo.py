@@ -4,7 +4,7 @@ from Products.CMFCore.utils import getToolByName
 
 from uu.qiext.interfaces import IWorkspaceContext
 from uu.qiext.user.interfaces import ISiteMembers, IWorkspaceRoster
-from uu.qiext.utils import group_workspace
+from uu.qiext.user.utils import user_workspaces
 
 
 class UserInfo(object):
@@ -30,9 +30,21 @@ class UserInfo(object):
         self._mtool = getToolByName(self.portal, 'portal_membership')
         self._secmgr = None
 
-    def user_display_info(self, principal):
+    def linked_workspaces(self, username):
+        if self._secmgr is None:
+            self._secmgr = getSecurityManager()
+        # get all workspaces for user in the current context
+        workspaces = user_workspaces(username, self.context)
+        _you_can_see = lambda w: self._secmgr.checkPermission('View', w)
+        _nolink = lambda w: {'absolute_url': '#', 'Title': w.Title()}
+        # only provide links to workspaces the current auth. user can View:
+        return [
+            (w if _you_can_see(w) else _nolink(w)) for w in workspaces
+            ]
+
+    def user_display_info(self, username):
         """
-        Given principal id, get information for that user, returning
+        Given username, get information for that user, returning
         it as a dict of portrait_url (if existing), properties,
         assignments (in this workspace), and memberships (in
         contained workspaces).
@@ -41,10 +53,10 @@ class UserInfo(object):
             self._secmgr = getSecurityManager()
         roster = self._roster
         data = {}  # use dict in lieu of object, simple
-        user = self._members.get(principal, None)
-        if user is None or principal not in roster:
+        user = self._members.get(username, None)
+        if user is None or username not in roster:
             return data  # empty if no user data or user not in workspace
-        portrait = self._members.portrait_for(principal)
+        portrait = self._members.portrait_for(username)
         if portrait is not None:
             data['portrait_url'] = portrait.absolute_url()
         propkeys = {
@@ -58,7 +70,7 @@ class UserInfo(object):
         restricted = self.RESTRICTED_PROPS
         if self._secmgr.checkPermission('Manage users', self.context):
             restricted = ()  # manager can see these properties
-        if self._mtool.getAuthenticatedMember().getId() == principal:
+        if self._mtool.getAuthenticatedMember().getId() == username:
             restricted = ()  # user can see own restricted properties
         props = {}
         for name, title in propkeys.items():
@@ -70,19 +82,8 @@ class UserInfo(object):
         if props:
             data['properties'] = props
         groups = roster.groups.values()
-        data['assignments'] = [g.title for g in groups if principal in g]
-        ns, groups = roster.namespace, roster.groups
-        local_groups = [o.pas_group() for o in groups.values()]
-        groupfilter = lambda g: g.startswith(ns) and g not in local_groups
-        contained_groups = filter(groupfilter, user.getGroups())
-        all_workspaces = [group_workspace(g) for g in contained_groups]
-        all_workspaces = filter(bool, all_workspaces)  # strip out errant None
-        _ismember = lambda u, w: u in IWorkspaceRoster(w)
-        _you_can_see = lambda w: self._secmgr.checkPermission('View', w)
-        workspaces = filter(lambda w: _ismember(principal, w), all_workspaces)
-        _nolink = lambda w: {'absolute_url': '#', 'Title': w.Title()}
-        workspaces = [(w if _you_can_see(w) else _nolink(w))
-                      for w in workspaces]
+        data['assignments'] = [g.title for g in groups if username in g]
+        workspaces = self.linked_workspaces(username)
         if workspaces:
             data['workspaces'] = workspaces
         return data
