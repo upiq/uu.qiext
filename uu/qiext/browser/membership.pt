@@ -9,7 +9,7 @@
     <script
       type="text/javascript"
       src="++resource++uu.qiext/membership.js"
-      tal:attributes="src string:${context/@@plone_portal_state/navigation_root_url}/++resource++uu.qiext/membership.js">
+      tal:attributes="src string:${context/@@plone_portal_state/navigation_root_url}/++resource++uu.qiext/membership.js?api=20140611">
     </script>
   </metal:block>
   <metal:block fill-slot="style_slot">
