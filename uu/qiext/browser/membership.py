@@ -96,6 +96,8 @@ class WorkspaceMembership(WorkspaceViewBase):
     backend adapters for workspace in uu.qiext.user modules.
     """
 
+    GROUP_ORDER = ('viewers', 'forms', 'contributors', 'managers')
+
     def __init__(self, context, request):
         super(WorkspaceMembership, self).__init__(context, request)
         self.search_user_result = []
@@ -103,14 +105,17 @@ class WorkspaceMembership(WorkspaceViewBase):
         self.config = None
 
     def groups(self, username=None):
+        order = self.GROUP_ORDER
+        _idx = lambda k: order.index(k) if k in order else len(order)
+        _order = lambda info: _idx(info.get('groupid'))
         if self.config is None:
             group_types = queryUtility(IWorkgroupTypes)
             if self.isproject:
                 self.config = group_types.select('project')
             else:
                 self.config = group_types.values()
+        config = copy.deepcopy(self.config)
         if username is not None:
-            config = copy.deepcopy(self.config)
             for groupinfo in config:
                 groupid = groupinfo['groupid']
                 if groupid == 'viewers':
@@ -118,8 +123,7 @@ class WorkspaceMembership(WorkspaceViewBase):
                 else:
                     workspace_group = self.roster.groups[groupid]
                     groupinfo['checked'] = username in workspace_group
-            return config
-        return self.config
+        return sorted(config, key=_order)
 
     def can_purge(self, username):
         """
