@@ -39,6 +39,8 @@ setup(name='uu.qiext',
       # -*- Entry points: -*-
       [z3c.autoinclude.plugin]
       target = plone
+      [zodbupdate]
+      renames = uu.qiext:rename_dict
       """,
       )
 
